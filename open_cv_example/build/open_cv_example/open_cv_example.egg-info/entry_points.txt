@@ -1,0 +1,4 @@
+[console_scripts]
+camara = open_cv_example.camara:main
+cv_example = open_cv_example.cv_example:main
+
