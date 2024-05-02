@@ -1,4 +1,6 @@
 [console_scripts]
 camara = open_cv_example.camara:main
+camara_sub = open_cv_example.camara_sub:main
 cv_example = open_cv_example.cv_example:main
+movimiento_camara = open_cv_example.movimiento_camara:main
 

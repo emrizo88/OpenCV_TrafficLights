@@ -22,6 +22,8 @@ setup(
         'console_scripts': [
             'cv_example = open_cv_example.cv_example:main',
             'camara = open_cv_example.camara:main',
+            'camara_sub = open_cv_example.camara_sub:main',
+            'movimiento_camara = open_cv_example.movimiento_camara:main',
         ],
     },
 )

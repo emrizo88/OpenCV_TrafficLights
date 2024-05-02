@@ -11,7 +11,9 @@ build/open_cv_example/open_cv_example.egg-info/top_level.txt
 build/open_cv_example/open_cv_example.egg-info/zip-safe
 open_cv_example/__init__.py
 open_cv_example/camara.py
+open_cv_example/camara_sub.py
 open_cv_example/cv_example.py
+open_cv_example/movimiento_camara.py
 resource/open_cv_example
 test/test_copyright.py
 test/test_flake8.py

@@ -1,41 +1,50 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
+from std_msgs.msg import Int32
 import cv2
 import numpy as np
 
-class TrafficLightDetector(Node):
+class WebcamPublisher(Node):
     def __init__(self):
-        super().__init__('traffic_light_detector')
-        self.subscription = self.create_subscription(
-            Image,
-            '/image_raw',  # Change 'image_raw' to the correct topic for your camera
-            self.image_callback,
-            10)
-        self.subscription  # To prevent the topic from being garbage collected immediately
-        self.cv_bridge = CvBridge()
+        super().__init__('webcam_publisher')
+        self.publisher = self.create_publisher(Image, '/webcam_image', 10)
+        self.signal_publisher = self.create_publisher(Int32, '/traffic_light_signal', 10)
+        self.capture = cv2.VideoCapture(0)
 
-        self.publisher = self.create_publisher(Image, '/processed_image', 10)
+    def publish_webcam_image(self):
+        while True:
+            ret, frame = self.capture.read()
+            if not ret:
+                self.get_logger().error('Failed to capture frame from webcam')
+                break
 
-    def image_callback(self, msg):
-        try:
-            frame = self.cv_bridge.imgmsg_to_cv2(msg, 'bgr8')
-            processed_frame = self.detect_and_highlight_circles(frame)
-            processed_msg = self.cv_bridge.cv2_to_imgmsg(processed_frame, 'bgr8')
-            self.publisher.publish(processed_msg)
-        except Exception as e:
-            self.get_logger().error(f'Error processing image: {e}')
+            processed_frame, signal_value = self.detect_and_highlight_circles(frame)
+            self.publish_image(processed_frame)
+            self.publish_signal(signal_value)
 
-    def adjust_color_range(self, hsv_image, lower_color_range, upper_color_range):
-        mask = cv2.inRange(hsv_image, lower_color_range, upper_color_range)
-        return mask
+            cv2.imshow('Webcam', processed_frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+    def publish_image(self, frame):
+        msg = Image()
+        msg.height, msg.width, _ = frame.shape
+        msg.encoding = 'bgr8'
+        msg.data = frame.tobytes()
+        self.publisher.publish(msg)
+
+    def publish_signal(self, signal_value):
+        msg = Int32()
+        msg.data = signal_value
+        self.signal_publisher.publish(msg)
 
     def detect_and_highlight_circles(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         blurred = cv2.medianBlur(gray, 11)
 
         color = (0, 0, 0)
+        signal_value = 0
 
         circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1, minDist=30,
                                    param1=50, param2=30, minRadius=5, maxRadius=30)
@@ -62,28 +71,33 @@ class TrafficLightDetector(Node):
 
                 if 0 <= mean_hsv[0] < 30 or 160 <= mean_hsv[0] <= 180:
                     color = (0, 0, 255)
-                    color_name = "Rojo"
+                    signal_value = 3
+                    print("Rojo Detectado")
                 elif 35 <= mean_hsv[0] <= 55:
                     color = (0, 255, 255)
-                    color_name = "Amarillo"
+                    signal_value = 2
+                    print("Amarillo Detectado")
                 elif 60 <= mean_hsv[0] <= 85:
                     color = (0, 255, 0)
-                    color_name = "Verde"
+                    signal_value = 1
+                    print("Verde Detectado")
 
                 cv2.circle(frame, (int(x), int(y)), int(r), color, 2)
                 cv2.rectangle(frame, (int(x) - int(r), int(y) - int(r)), (int(x) + int(r), int(y) + int(r)), color, 2)
 
                 if color in [(0, 0, 255), (0, 255, 255), (0, 255, 0)]:
-                    cv2.putText(frame, f"Semaforo en {color_name}", (int(x) - int(r), int(y) - int(r) - 10),
+                    cv2.putText(frame, f"Semaforo en", (int(x) - int(r), int(y) - int(r) - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        else:
+            print("Nothing detected")
 
-        return frame
+        return frame, signal_value
 
 def main(args=None):
     rclpy.init(args=args)
-    traffic_light_detector = TrafficLightDetector()
-    rclpy.spin(traffic_light_detector)
-    traffic_light_detector.destroy_node()
+    webcam_publisher = WebcamPublisher()
+    webcam_publisher.publish_webcam_image()
+    webcam_publisher.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
