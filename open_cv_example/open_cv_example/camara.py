@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from std_msgs.msg import Int32
+from std_msgs.msg import Float32
 import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
@@ -11,7 +11,7 @@ class VideoSubscriber(Node):
         super().__init__('video_subscriber')
         self.subscription = self.create_subscription(Image, 'video_source/raw', self.listener_callback, 10)
         self.publisher = self.create_publisher(Image, '/webcam_image', 10)
-        self.signal_publisher = self.create_publisher(Int32, '/traffic_light_signal', 10)
+        self.signal_publisher = self.create_publisher(Float32, '/traffic_light_signal', 10)
         self.bridge = CvBridge()
         self.frame = None
 
@@ -36,8 +36,8 @@ class VideoSubscriber(Node):
         self.publisher.publish(msg)
 
     def publish_signal(self, signal_value):
-        msg = Int32()
-        msg.data = signal_value
+        msg = Float32()
+        msg.data = float(signal_value)
         self.signal_publisher.publish(msg)
 
     def detect_and_highlight_circles(self, frame):
@@ -45,7 +45,7 @@ class VideoSubscriber(Node):
         blurred = cv2.medianBlur(gray, 11)
 
         color = (0, 0, 0)
-        signal_value = 0
+        signal_value = 0.0
 
         circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1, minDist=30,
                                    param1=50, param2=30, minRadius=5, maxRadius=30)
@@ -72,15 +72,15 @@ class VideoSubscriber(Node):
 
                 if 0 <= mean_hsv[0] < 30 or 160 <= mean_hsv[0] <= 180:
                     color = (0, 0, 255)
-                    signal_value = 3
+                    signal_value = 3.0
                     print("Rojo Detectado")
                 elif 35 <= mean_hsv[0] <= 55:
                     color = (0, 255, 255)
-                    signal_value = 2
+                    signal_value = 2.0
                     print("Amarillo Detectado")
                 elif 60 <= mean_hsv[0] <= 85:
                     color = (0, 255, 0)
-                    signal_value = 1
+                    signal_value = 1.0
                     print("Verde Detectado")
 
                 cv2.circle(frame, (int(x), int(y)), int(r), color, 2)
